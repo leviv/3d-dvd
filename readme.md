@@ -1,4 +1,4 @@
-# Three.js Journey
+# 3d Bouncing DVD
 
 ## Setup
 Download [Node.js](https://nodejs.org/en/download/).
