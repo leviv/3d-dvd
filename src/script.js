@@ -7,6 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
  * Debug
  */
 const gui = new lil.GUI({ closed: true, width: 400 });
+gui.close();
 
 /**
  * Base
@@ -152,9 +153,9 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 // Velocity vector
-const xInitialVelocity = 0.03;
-const yInitialVelocity = 0.03;
-const zInitialVelocity = 0.03;
+const xInitialVelocity = 0.08;
+const yInitialVelocity = 0.08;
+const zInitialVelocity = 0.08;
 const velocityVector = new THREE.Vector3(
   xInitialVelocity,
   yInitialVelocity,
