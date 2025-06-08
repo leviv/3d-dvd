@@ -1,5 +1,6 @@
 {
-  "repository": "#",
+  "repository": "https://github.com/leviv/3d-dvd",
+  "homepage": "https://leviv.cool/3d-dvd/",
   "license": "UNLICENSED",
   "scripts": {
     "build": "webpack --config ./bundler/webpack.prod.js",
