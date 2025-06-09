@@ -116,7 +116,7 @@ const guiOptions = {
 };
 outerBoxEdges.visible = guiOptions.showEdges;
 innerBoxEdges.visible = guiOptions.showEdges;
-gui.add(guiOptions, "showEdges").name("Show edges").onChange((value) => {
+gui.add(guiOptions, "showEdges").name("Always Show edges").onChange((value) => {
   outerBoxEdges.visible = value;
   innerBoxEdges.visible = value;
 });
@@ -142,8 +142,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 0, 15); // Start much closer, facing front
-camera.rotation.set(0, 0, 0);  // Start with no rotation
+camera.position.set(0, 0, 37.5); 
+camera.rotation.set(0, 0, 0);  
 scene.add(camera);
 
 // Controls
@@ -160,7 +160,7 @@ controls.addEventListener("change", () => {
     if (edgeTimeout) clearTimeout(edgeTimeout);
     edgeTimeout = setTimeout(() => {
       outerBoxEdges.visible = false;
-    }, 200); // 2 seconds after last rotation
+    }, 100); 
   }
 });
 
@@ -172,25 +172,25 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 // Velocity vector
-const xInitialVelocity = 0.08;
+const xInitialVelocity = 0.06;
 const yInitialVelocity = 0.08;
-const zInitialVelocity = 0.08;
+const zInitialVelocity = 0.09;
 const velocityVector = new THREE.Vector3(
   xInitialVelocity,
   yInitialVelocity,
   zInitialVelocity
 );
 
-gui.add(velocityVector, "x").min(-1).max(1).step(0.01).name("x velocity");
-gui.add(velocityVector, "y").min(-1).max(1).step(0.01).name("y velocity");
-gui.add(velocityVector, "z").min(-1).max(1).step(0.01).name("z velocity");
+gui.add(velocityVector, "x").min(-.5).max(.5).step(0.01).name("x velocity");
+gui.add(velocityVector, "y").min(-.5).max(.5).step(0.01).name("y velocity");
+gui.add(velocityVector, "z").min(-.5).max(.5).step(0.01).name("z velocity");
 
 // Target camera position for the top-left-front corner view
 const targetCamera = new THREE.Vector3(-20, 15, 37.5); // left, up, out (was 60, now halfway: (15 + 60) / 2 = 37.5)
 
 // Animation state for intro
 let introStart = performance.now();
-const introHold = 1000; // Hold at start for 1 seconds
+const introHold = 3000; // Hold at start for 5 seconds
 const introDuration = 5000; // 5 seconds in ms (pan duration)
 let introDone = false;
 
@@ -204,43 +204,49 @@ const tick = () => {
   let hitWalls = []; // Track all hit walls
 
   // X walls (right/left)
-  if (
-    Math.abs(innerBox.position.x) >=
+  const xLimit =
     Math.abs(
       outerBox.position.x +
         outerBoxGeometry.parameters.width / 2 -
         innerBoxGeometry.parameters.width / 2
-    )
-  ) {
+    );
+  if (Math.abs(innerBox.position.x) >= xLimit) {
     velocityVector.x = -velocityVector.x;
     bounced = true;
     hitWalls.push(innerBox.position.x > 0 ? 0 : 1); // right : left
+    // Clamp position
+    innerBox.position.x = Math.sign(innerBox.position.x) * xLimit;
+    innerBoxEdges.position.x = innerBox.position.x;
   }
   // Y walls (top/bottom)
-  if (
-    Math.abs(innerBox.position.y) >=
+  const yLimit =
     Math.abs(
       outerBox.position.y +
         outerBoxGeometry.parameters.height / 2 -
         innerBoxGeometry.parameters.height / 2
-    )
-  ) {
+    );
+  if (Math.abs(innerBox.position.y) >= yLimit) {
     velocityVector.y = -velocityVector.y;
     bounced = true;
     hitWalls.push(innerBox.position.y > 0 ? 2 : 3); // top : bottom
+    // Clamp position
+    innerBox.position.y = Math.sign(innerBox.position.y) * yLimit;
+    innerBoxEdges.position.y = innerBox.position.y;
   }
   // Z walls (front/back)
-  if (
-    Math.abs(innerBox.position.z) >=
+  const zLimit =
     Math.abs(
       outerBox.position.z +
         outerBoxGeometry.parameters.depth / 2 -
         innerBoxGeometry.parameters.depth / 2
-    )
-  ) {
+    );
+  if (Math.abs(innerBox.position.z) >= zLimit) {
     velocityVector.z = -velocityVector.z;
     bounced = true;
     hitWalls.push(innerBox.position.z > 0 ? 4 : 5); // front : back
+    // Clamp position
+    innerBox.position.z = Math.sign(innerBox.position.z) * zLimit;
+    innerBoxEdges.position.z = innerBox.position.z;
   }
 
   // Change color on bounce and trigger wall highlights
