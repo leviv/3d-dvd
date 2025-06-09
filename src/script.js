@@ -10,6 +10,14 @@ const gui = new lil.GUI({ closed: true, width: 400 });
 gui.close();
 
 /**
+ * Textures
+ */
+const loadingManager = new THREE.LoadingManager();
+
+const textureLoader = new THREE.TextureLoader(loadingManager);
+const texture = textureLoader.load("./logo.svg");
+
+/**
  * Base
  */
 // Canvas
@@ -23,9 +31,6 @@ const sizes = {
   width: window.innerWidth,
   height: window.innerHeight,
 };
-
-// Texture
-const texture = new THREE.TextureLoader().load("/logo.svg");
 
 // Helper to generate a random color
 function getRandomColor() {
@@ -84,7 +89,7 @@ var outerBoxEdges = new THREE.LineSegments(
   outerBoxLinesGeometry,
   outerBoxLinesMaterial
 );
-scene.add(outerBoxEdges); // Start with edges visible
+scene.add(outerBoxEdges); 
 
 // Inner box
 const dvdAspectRatio = 2.26282051;
@@ -144,6 +149,20 @@ scene.add(camera);
 // Controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
+
+// Show outer box edges when user rotates
+let edgeTimeout = null;
+
+controls.addEventListener("change", () => {
+  outerBoxEdges.visible = true;
+  // Only auto-hide if the GUI toggle is off
+  if (!guiOptions.showEdges) {
+    if (edgeTimeout) clearTimeout(edgeTimeout);
+    edgeTimeout = setTimeout(() => {
+      outerBoxEdges.visible = false;
+    }, 200); // 2 seconds after last rotation
+  }
+});
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
