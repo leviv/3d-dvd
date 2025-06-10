@@ -2,6 +2,8 @@ import "./style.css";
 import * as THREE from "three";
 import * as lil from "lil-gui";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 /**
  * Debug
@@ -16,6 +18,7 @@ const loadingManager = new THREE.LoadingManager();
 
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const texture = textureLoader.load("./logo.svg");
+const matcapTexture = textureLoader.load("./textures/matcaps/2.png");
 
 /**
  * Base
@@ -110,9 +113,64 @@ var innerBoxEdges = new THREE.LineSegments(
 );
 scene.add(innerBoxEdges); // Start with edges visible
 
+// Text
+// After scene setup:
+let cornersHit = 0;
+let counterMesh = null;
+const fontLoader = new FontLoader();
+fontLoader.load("./fonts/helvetiker_regular.typeface.json", (font) => {
+  fontLoader.font = font; // Save for later
+  const geometry = new TextGeometry(`Corners hit: ${cornersHit}`, {
+    font: font,
+    size: 2,
+    height: 0.5,
+    curveSegments: 12,
+    bevelEnabled: false,
+  });
+  const material = new THREE.MeshMatcapMaterial({
+    matcap: matcapTexture,
+  });
+  counterMesh = new THREE.Mesh(geometry, material);
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const textWidth = box.max.x - box.min.x;
+  counterMesh.position.set(-textWidth / 2, outerBoxGeometry.parameters.height / 2 + 3, 0);
+  counterMesh.visible = guiOptions.showCounter; // <-- set visibility
+  scene.add(counterMesh);
+});
+
+function updateCounterText(font) {
+  if (counterMesh) {
+    scene.remove(counterMesh);
+  }
+  const geometry = new TextGeometry(`Corners hit: ${cornersHit}`, {
+    font: font,
+    size: 2,
+    height: 0.5,
+    curveSegments: 15,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+  const material = new THREE.MeshMatcapMaterial({
+      matcap: matcapTexture,
+    });
+  counterMesh = new THREE.Mesh(geometry, material);
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const textWidth = box.max.x - box.min.x;
+  counterMesh.position.set(-textWidth / 2, outerBoxGeometry.parameters.height / 2 + 3, 0);
+  counterMesh.visible = guiOptions.showCounter; // <-- set visibility
+  scene.add(counterMesh);
+}
+
 // GUI control for showing edges
 const guiOptions = {
   showEdges: false, // Start with edges hidden
+  sound: 0,         // Sound off by default
+  showCounter: true // Show counter text by default
 };
 outerBoxEdges.visible = guiOptions.showEdges;
 innerBoxEdges.visible = guiOptions.showEdges;
@@ -120,7 +178,14 @@ gui.add(guiOptions, "showEdges").name("Always Show edges").onChange((value) => {
   outerBoxEdges.visible = value;
   innerBoxEdges.visible = value;
 });
+gui.add(guiOptions, "showCounter").name("Show Counter").onChange((value) => {
+  if (counterMesh) {
+    counterMesh.visible = value;
+  }
+});
+gui.add(guiOptions, "sound", 0, 1, 0.01).name("Sound Volume");
 
+// Event listener for window resize
 window.addEventListener("resize", () => {
   // Update sizes
   sizes.width = window.innerWidth;
@@ -172,27 +237,46 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 // Velocity vector
-const xInitialVelocity = 0.06;
-const yInitialVelocity = 0.08;
-const zInitialVelocity = 0.09;
+const xInitialVelocity = .1;
+const yInitialVelocity = .08;
+const zInitialVelocity = .06;
 const velocityVector = new THREE.Vector3(
   xInitialVelocity,
   yInitialVelocity,
   zInitialVelocity
 );
 
-gui.add(velocityVector, "x").min(-.5).max(.5).step(0.01).name("x velocity");
-gui.add(velocityVector, "y").min(-.5).max(.5).step(0.01).name("y velocity");
-gui.add(velocityVector, "z").min(-.5).max(.5).step(0.01).name("z velocity");
+gui.add(velocityVector, "x").min(0).max(2).step(0.2).name("x velocity");
+gui.add(velocityVector, "y").min(0).max(2).step(0.2).name("y velocity");
+gui.add(velocityVector, "z").min(0).max(2).step(0.2).name("z velocity");
 
 // Target camera position for the top-left-front corner view
 const targetCamera = new THREE.Vector3(-20, 15, 37.5); // left, up, out (was 60, now halfway: (15 + 60) / 2 = 37.5)
 
 // Animation state for intro
 let introStart = performance.now();
-const introHold = 3000; // Hold at start for 5 seconds
-const introDuration = 5000; // 5 seconds in ms (pan duration)
+const introHold = 3000; // Hold at start for 3 seconds
+const introDuration = 5000; 
 let introDone = false;
+
+const bounceSounds = [];
+for (let i = 1; i <= 19; i++) {
+  const audio = new Audio(`./bounce${i}.wav`);
+  bounceSounds.push(audio);
+}
+
+function playBounceSoundForFace(faceIdx) {
+  const soundIdx = faceIdx % bounceSounds.length;
+  const sound = bounceSounds[soundIdx].cloneNode();
+  sound.volume = guiOptions.sound; // Set volume from slider
+  sound.currentTime = 0;
+  if (guiOptions.sound > 0) {
+    sound.play();
+  }
+}
+
+// Add this variable outside the tick function (so it persists between frames)
+let prevHitWallsCount = 0;
 
 // Animate
 const clock = new THREE.Clock();
@@ -260,6 +344,22 @@ const tick = () => {
 
     cubeColor = getRandomColor();
     innerBox.material.forEach((mat) => (mat.color.setHex(cubeColor)));
+
+    // Play the bounce sound for each hit wall if enabled
+    if (guiOptions.sound) {
+      hitWalls.forEach((wallIdx) => playBounceSoundForFace(wallIdx));
+    }
+  }
+
+  // In your tick function, after the if (bounced) { ... } block:
+  // Check for corner hit in this or previous tick
+  if ((hitWalls.length + prevHitWallsCount >= 3) && fontLoader.font) {
+    cornersHit++;
+    updateCounterText(fontLoader.font);
+    // Prevent double-counting on consecutive ticks
+    prevHitWallsCount = 0;
+  } else {
+    prevHitWallsCount = hitWalls.length;
   }
 
   // Fade out wall highlights

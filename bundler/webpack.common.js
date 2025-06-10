@@ -76,7 +76,16 @@ module.exports = {
                 {
                     filename: 'assets/fonts/[hash][ext]'
                 }
-            }
+            },
+
+            // Audio (add this for .wav and .mp3)
+            {
+                test: /\.(wav|mp3)$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/audio/[hash][ext]'
+                }
+            },
         ]
     }
 }
