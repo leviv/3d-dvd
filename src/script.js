@@ -255,9 +255,9 @@ const velocityVector = new THREE.Vector3(
   zInitialVelocity
 );
 
-gui.add(velocityVector, "x").min(0).max(2).step(0.1).name("x velocity");
-gui.add(velocityVector, "y").min(0).max(2).step(0.1).name("y velocity");
-gui.add(velocityVector, "z").min(0).max(2).step(0.1).name("z velocity");
+gui.add(velocityVector, "x").min(0).max(1).step(0.1).name("x velocity");
+gui.add(velocityVector, "y").min(0).max(1).step(0.1).name("y velocity");
+gui.add(velocityVector, "z").min(0).max(1).step(0.1).name("z velocity");
 
 // Target camera position for the top-left-front corner view
 const targetCamera = new THREE.Vector3(-20, 15, 37.5); // left, up, out (was 60, now halfway: (15 + 60) / 2 = 37.5)
