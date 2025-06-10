@@ -102,6 +102,11 @@ const innerBoxGeometry = new THREE.BoxGeometry(
   dvdAspectRatio
 );
 const innerBox = new THREE.Mesh(innerBoxGeometry, innerBoxMaterials);
+innerBox.position.set(
+  - (outerBoxGeometry.parameters.width / 2 - innerBoxGeometry.parameters.width / 2),   // X: left
+    (outerBoxGeometry.parameters.height / 2 - innerBoxGeometry.parameters.height / 2), // Y: top
+  - (outerBoxGeometry.parameters.depth / 2 - innerBoxGeometry.parameters.depth / 2)    // Z: front
+);
 scene.add(innerBox);
 
 // Inner box lines
@@ -141,6 +146,9 @@ fontLoader.load("./fonts/helvetiker_regular.typeface.json", (font) => {
 
 function updateCounterText(font) {
   if (counterMesh) {
+    // Properly dispose of geometry and material to prevent memory leaks
+    if (counterMesh.geometry) counterMesh.geometry.dispose();
+    if (counterMesh.material) counterMesh.material.dispose();
     scene.remove(counterMesh);
   }
   const geometry = new TextGeometry(`Corners hit: ${cornersHit}`, {
@@ -155,14 +163,14 @@ function updateCounterText(font) {
     bevelSegments: 4,
   });
   const material = new THREE.MeshMatcapMaterial({
-      matcap: matcapTexture,
-    });
+    matcap: matcapTexture,
+  });
   counterMesh = new THREE.Mesh(geometry, material);
   geometry.computeBoundingBox();
   const box = geometry.boundingBox;
   const textWidth = box.max.x - box.min.x;
   counterMesh.position.set(-textWidth / 2, outerBoxGeometry.parameters.height / 2 + 3, 0);
-  counterMesh.visible = guiOptions.showCounter; // <-- set visibility
+  counterMesh.visible = guiOptions.showCounter;
   scene.add(counterMesh);
 }
 
@@ -237,18 +245,19 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 // Velocity vector
-const xInitialVelocity = .1;
-const yInitialVelocity = .08;
-const zInitialVelocity = .06;
+const xInitialVelocity = .04;
+const yInitialVelocity = .03;
+const zInitialVelocity = .05;
+
 const velocityVector = new THREE.Vector3(
   xInitialVelocity,
   yInitialVelocity,
   zInitialVelocity
 );
 
-gui.add(velocityVector, "x").min(0).max(2).step(0.2).name("x velocity");
-gui.add(velocityVector, "y").min(0).max(2).step(0.2).name("y velocity");
-gui.add(velocityVector, "z").min(0).max(2).step(0.2).name("z velocity");
+gui.add(velocityVector, "x").min(0).max(2).step(0.1).name("x velocity");
+gui.add(velocityVector, "y").min(0).max(2).step(0.1).name("y velocity");
+gui.add(velocityVector, "z").min(0).max(2).step(0.1).name("z velocity");
 
 // Target camera position for the top-left-front corner view
 const targetCamera = new THREE.Vector3(-20, 15, 37.5); // left, up, out (was 60, now halfway: (15 + 60) / 2 = 37.5)
@@ -274,9 +283,6 @@ function playBounceSoundForFace(faceIdx) {
     sound.play();
   }
 }
-
-// Add this variable outside the tick function (so it persists between frames)
-let prevHitWallsCount = 0;
 
 // Animate
 const clock = new THREE.Clock();
@@ -344,22 +350,26 @@ const tick = () => {
 
     cubeColor = getRandomColor();
     innerBox.material.forEach((mat) => (mat.color.setHex(cubeColor)));
+  }
 
-    // Play the bounce sound for each hit wall if enabled
-    if (guiOptions.sound) {
-      hitWalls.forEach((wallIdx) => playBounceSoundForFace(wallIdx));
+  if (guiOptions.sound) {
+    if (hitWalls.length === 1) {
+      playBounceSoundForFace(hitWalls[0]);
+    }
+    
+
+    if (hitWalls.length === 2) {
+      playBounceSoundForFace(10);
+    }
+
+    if (hitWalls.length === 3) {
+      playBounceSoundForFace(9);
     }
   }
 
-  // In your tick function, after the if (bounced) { ... } block:
-  // Check for corner hit in this or previous tick
-  if ((hitWalls.length + prevHitWallsCount >= 3) && fontLoader.font) {
+  if (hitWalls.length === 3 && fontLoader.font) {
     cornersHit++;
     updateCounterText(fontLoader.font);
-    // Prevent double-counting on consecutive ticks
-    prevHitWallsCount = 0;
-  } else {
-    prevHitWallsCount = hitWalls.length;
   }
 
   // Fade out wall highlights
